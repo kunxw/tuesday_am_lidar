@@ -1,0 +1,90 @@
+---
+title: "classify-raster-data"
+author: "Kunxuan Wang"
+date: "June 21, 2016"
+output: html_document
+---
+
+require vs library
+require - return true/false if installed or not only load as side effect
+
+```{r import-libraries}
+library(raster)
+library(rgdal)
+
+```
+
+`image(chm)` will stretch chm
+```{r import-canopu-height}
+chm <- raster("../NEONdata/D17-California/TEAK/2013/lidar/TEAK_lidarCHM.tif")
+plot(chm, main="plot of raster")
+
+```
+
+## deal with 0 values
+```{r assign-na}
+chm[chm == 0] <- NA
+hist(chm, 
+     xlab="Tree height (m)")
+
+```
+
+## import aspect data
+```{r import-aspect}
+aspect <- raster("../NEONdata/D17-California/TEAK/2013/lidar/TEAK_lidarAspect.tif")
+plot(aspect, main = "Aspect data for TEAK")
+
+
+```
+
+N -> 0-45, 315-360 deg -> class = 1
+S -> 125-225 deg -> class = 2
+## classify N & S aspect
+```{r classify-aspect}
+# creat a string, the reshape into matrix
+# [#1, #2)
+class.m <- c(0, 45, 1,
+             45, 135, NA,
+             135, 225, 2,
+             225, 315, NA,
+             315, 360, 1)
+
+# shape into matrix
+rcl.m <- matrix(class.m, 
+                ncol = 3, 
+                byrow = TRUE)
+
+```
+
+## reclassify raster
+```{r reclass}
+asp.ns <- reclassify(aspect, rcl.m)
+
+plot(asp.ns, main="North South facing slopes")
+
+```
+
+## save asp.ns as output - export geotiff
+```{r export-tiff, eval=FALSE}
+writeRaster(asp.ns,
+            file = "../outputs/TEAK/Teak_nsAspect2.tif",
+            options = "COMPRESS=LZW",
+            NAflag = -9999)
+
+```
+
+## write mask
+```{r raster-mask}
+ndvi <- raster("../NEONdata/D17-California/TEAK/2013/spectrometer/veg_index/TEAK_NDVI.tif")
+
+plot(ndvi, main = "NDVI for TEAK")
+
+# mask data
+nFace.ndvi <- mask(ndvi, asp.ns)
+
+plot(nFace.ndvi, main = "ndvi in NS slope")
+
+```
+
+
+
